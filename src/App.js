@@ -112,27 +112,27 @@ function App() {
     setIsLoading(true);
 
     try {
-        const workingModel = modelName.includes('kwaipilot') ? 'microsoft/wizardlm-2-8x22b:free' : modelName;
-        
         console.log('API Provider URL:', apiProvider);
         console.log('API Key:', apiKey);
-        console.log('Request Model:', workingModel);
         console.log('Request Body:', JSON.stringify({
-          model: workingModel,
-          max_tokens: 2048,
-          messages: newMessages
-        }));
-        
-      const response = await fetch(apiProvider, {
-        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
           'HTTP-Referer': 'http://localhost:3000',
           'X-Title': 'Interview Assistant'
         },
+          model: modelName,
+          max_tokens: 2048,
+          messages: newMessages
+        }));
+      const response = await fetch(apiProvider, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
         body: JSON.stringify({
-          model: workingModel,
+          model: modelName,
           max_tokens: 2048,
           messages: newMessages
         })
