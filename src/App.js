@@ -3,21 +3,33 @@ import './App.css';
 
 function App() {
   const [apiKey, setApiKey] = useState('');
+  const [apiProvider, setApiProvider] = useState('');
+  const [modelName, setModelName] = useState('');
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [tempApiKey, setTempApiKey] = useState('');
+  const [tempApiProvider, setTempApiProvider] = useState('');
+  const [tempModelName, setTempModelName] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
-    loadApiKey();
-    
-    // Listen for clear conversation shortcut
     if (window.electron) {
+      loadApiKey();
+      
+      // Listen for clear conversation shortcut
       window.electron.onClearConversation(() => {
         setMessages([]);
       });
+    } else {
+      // Fallback for browser mode
+      setApiKey('');
+      setApiProvider('');
+      setModelName('');
+      setTempApiKey('');
+      setTempApiProvider('');
+      setTempModelName('');
     }
   }, []);
 
@@ -26,18 +38,63 @@ function App() {
   }, [messages]);
 
   const loadApiKey = async () => {
-    if (window.electron) {
-      const key = await window.electron.getApiKey();
-      setApiKey(key);
-      setTempApiKey(key);
+    try {
+      if (window.electron) {
+        const settings = await window.electron.getSettings();
+        
+        if (settings) {
+          setApiKey(settings.apiKey || '');
+          setApiProvider(settings.apiProvider || '');
+          setModelName(settings.modelName || '');
+          setTempApiKey(settings.apiKey || '');
+          setTempApiProvider(settings.apiProvider || '');
+          setTempModelName(settings.modelName || '');
+        } else {
+          fallbackToLocalStorage();
+        }
+      } else {
+        fallbackToLocalStorage();
+      }
+    } catch (error) {
+      fallbackToLocalStorage();
     }
   };
 
+  const fallbackToLocalStorage = () => {
+    const storedApiKey = localStorage.getItem('apiKey') || '';
+    const storedApiProvider = localStorage.getItem('apiProvider') || '';
+    const storedModelName = localStorage.getItem('modelName') || '';
+    
+    setApiKey(storedApiKey);
+    setApiProvider(storedApiProvider);
+    setModelName(storedModelName);
+    setTempApiKey(storedApiKey);
+    setTempApiProvider(storedApiProvider);
+    setTempModelName(storedModelName);
+  };
+
   const saveApiKey = async () => {
-    if (window.electron) {
-      await window.electron.setApiKey(tempApiKey);
+    const settings = {
+      apiKey: tempApiKey,
+      apiProvider: tempApiProvider,
+      modelName: tempModelName,
+    };
+    
+    try {
+      if (window.electron) {
+        await window.electron.setSettings(settings);
+      } else {
+        localStorage.setItem('apiKey', tempApiKey);
+        localStorage.setItem('apiProvider', tempApiProvider);
+        localStorage.setItem('modelName', tempModelName);
+      }
+      
       setApiKey(tempApiKey);
+      setApiProvider(tempApiProvider);
+      setModelName(tempModelName);
       setShowSettings(false);
+    } catch (error) {
+      // Error handling is silent in production
     }
   };
 
@@ -55,14 +112,27 @@ function App() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://api.perplexity.ai/chat/completions', {
+        const workingModel = modelName.includes('kwaipilot') ? 'microsoft/wizardlm-2-8x22b:free' : modelName;
+        
+        console.log('API Provider URL:', apiProvider);
+        console.log('API Key:', apiKey);
+        console.log('Request Model:', workingModel);
+        console.log('Request Body:', JSON.stringify({
+          model: workingModel,
+          max_tokens: 2048,
+          messages: newMessages
+        }));
+        
+      const response = await fetch(apiProvider, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': 'http://localhost:3000',
+          'X-Title': 'Interview Assistant'
         },
         body: JSON.stringify({
-          model: 'sonar-chat',
+          model: workingModel,
           max_tokens: 2048,
           messages: newMessages
         })
@@ -131,13 +201,37 @@ function App() {
       {showSettings ? (
         <div className="settings">
           <h3>Settings</h3>
+          <div className="settings-info">
+            <p><strong>Current Settings:</strong></p>
+            <p>API Provider: {apiProvider || 'Not set'}</p>
+            <p>Model Name: {modelName || 'Not set'}</p>
+            <p>API Key: {apiKey ? '••••••••' : 'Not set'}</p>
+          </div>
           <label>
-            Anthropic API Key:
+            API Provider:
+            <input
+              type="text"
+              value={tempApiProvider}
+              onChange={(e) => setTempApiProvider(e.target.value)}
+              placeholder={apiProvider || "Enter API Provider URL"}
+            />
+          </label>
+          <label>
+            Model Name:
+            <input
+              type="text"
+              value={tempModelName}
+              onChange={(e) => setTempModelName(e.target.value)}
+              placeholder={modelName || "Enter Model Name"}
+            />
+          </label>
+          <label>
+            API Key:
             <input
               type="password"
               value={tempApiKey}
               onChange={(e) => setTempApiKey(e.target.value)}
-              placeholder="sk-ant-..."
+              placeholder={apiKey ? "Enter new API Key" : "Enter API Key"}
             />
           </label>
           <div className="settings-buttons">
@@ -188,8 +282,8 @@ function App() {
               placeholder="Ask anything... (Enter to send, Shift+Enter for new line)"
               disabled={!apiKey || isLoading}
             />
-            <button 
-              onClick={sendMessage} 
+            <button
+              onClick={sendMessage}
               disabled={!input.trim() || !apiKey || isLoading}
             >
               Send

@@ -96,12 +96,37 @@ app.on('will-quit', () => {
 
 // IPC handlers
 ipcMain.handle('get-api-key', () => {
-  return store.get('apiKey', '');
+  const apiKey = store.get('apiKey', '');
+  return apiKey;
 });
 
 ipcMain.handle('set-api-key', (event, apiKey) => {
   store.set('apiKey', apiKey);
   return true;
+});
+
+ipcMain.handle('get-settings', () => {
+  try {
+    const settings = {
+      apiKey: store.get('apiKey', ''),
+      apiProvider: store.get('apiProvider', ''),
+      modelName: store.get('modelName', '')
+    };
+    return settings;
+  } catch (error) {
+    return { apiKey: '', apiProvider: '', modelName: '' };
+  }
+});
+
+ipcMain.handle('set-settings', (event, settings) => {
+  try {
+    store.set('apiKey', settings.apiKey || '');
+    store.set('apiProvider', settings.apiProvider || '');
+    store.set('modelName', settings.modelName || '');
+    return true;
+  } catch (error) {
+    return false;
+  }
 });
 
 ipcMain.handle('minimize-window', () => {

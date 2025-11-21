@@ -227,6 +227,26 @@ body {
   font-size: 20px;
 }
 
+.settings-info {
+  background: rgba(55, 65, 81, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.settings-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.settings-info p:first-child {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .settings label {
   display: block;
   margin-bottom: 20px;
